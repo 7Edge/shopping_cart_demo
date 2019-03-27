@@ -5,9 +5,13 @@
 # Date: 3/25/2019
 
 from django.urls import re_path
+from django.views.decorators.csrf import csrf_exempt
+from cart.views import shoppingcart
+from cart.views import account
 
 urlpatterns = [
-    # re_path('^shopping_cart/$',)
+    re_path('^shopping_cart/$', csrf_exempt(shoppingcart.ShoppingCartAPIView.as_view())),
+    re_path('^access_token/$', csrf_exempt(account.AccessTokenAPIView.as_view()), name='access_token')
 ]
 if __name__ == '__main__':
     pass

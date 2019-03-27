@@ -148,7 +148,7 @@ class UserInfo(models.Model):
 class UserToken(models.Model):
     user = models.OneToOneField(verbose_name='用户', to='UserInfo', on_delete=models.CASCADE)
     token = models.CharField(verbose_name='token', max_length=128)
-    expired = models.DateTimeField(verbose_name='有效期', auto_now_add=True)
+    expired = models.DateTimeField(verbose_name='有效期')
 
     class Meta:
         verbose_name_plural = '202. 用户认证token表'
