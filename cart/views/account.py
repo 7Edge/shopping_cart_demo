@@ -22,7 +22,7 @@ from cart.utils.china_time import china_current
 class AccessTokenAPIView(APIView):
 
     def post(self, request, *args, **kwargs):
-        print("请求的编码类型", request._request.content_type)
+        # print("请求的编码类型", request._request.content_type)
 
         result = AccessTokenResponse()
         result.code = 1000

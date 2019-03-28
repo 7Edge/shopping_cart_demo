@@ -11,8 +11,11 @@
 """
 from rest_framework.views import APIView
 
+from cart.authentication.auth import AccessTokenAuth
+
 
 class ShoppingCartAPIView(APIView):
+    authentication_classes = [AccessTokenAuth, ]
 
     def get(self, request, *args, **kwargs):
         pass
@@ -25,6 +28,7 @@ class ShoppingCartAPIView(APIView):
 
     def delete(self, request, *args, **kwargs):
         pass
+
 
 if __name__ == '__main__':
     pass
