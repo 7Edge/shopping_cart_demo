@@ -30,7 +30,7 @@ class AccessTokenAuth(BaseAuthentication):
 
         access_token = request.query_params.get('access_token')
         token_obj = models.UserToken.objects.filter(expired__gte=china_time.china_current.now,
-                                                    toke=access_token).first()
+                                                    token=access_token).first()
         if token_obj:
             return token_obj.user, token_obj.token
         else:
