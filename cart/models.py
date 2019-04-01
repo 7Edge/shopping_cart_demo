@@ -54,6 +54,9 @@ class DegreeCourse(models.Model):
     # 反向查询课程问题集
     degree_asked_question = GenericRelation(to='OftenAskedQuestion')
 
+    # 方向查询优惠券策略
+    coupon_qs = GenericRelation(to='Coupon', related_query_name='degreecourse')
+
     class Meta:
         verbose_name_plural = "03. 学位课程表"
 
@@ -155,3 +158,76 @@ class UserToken(models.Model):
 
     def __str__(self):
         return "%s - %s" % (self.user, self.token)
+
+
+# 课程优惠卷
+class Coupon(models.Model):
+    """优惠卷类型"""
+
+    name = models.CharField(verbose_name='优惠券名', max_length=64)
+    brief = models.TextField(verbose_name='优惠券介绍', null=True, blank=True)
+    coupon_type_choices = ((0, '通用券'),
+                           (1, '折扣券'),
+                           (2, '满减券'))
+    coupon_type = models.SmallIntegerField(verbose_name='券类型', choices=coupon_type_choices)
+
+    money_equivalent_value = models.IntegerField(verbose_name='等值货币', null=True, blank=True)
+    off_percent = models.PositiveIntegerField(verbose_name="折扣百分比", help_text="只针对折扣券，例7.9折，写79",
+                                              null=True, blank=True)
+    minimum_consume = models.PositiveIntegerField(verbose_name='最低消费', default=0, help_text="仅在满减券时填写此字段")
+
+    object_id = models.PositiveIntegerField(verbose_name='课程id', blank=True, null=True, help_text='通用卷不用绑定课程')
+    content_type = models.ForeignKey(verbose_name='课程类型', to=ContentType, null=True, blank=True,
+                                     on_delete=models.CASCADE)
+    content_object = GenericForeignKey()
+
+    quantity = models.PositiveIntegerField(verbose_name='优惠券数量', default=1)
+    open_date = models.DateField(verbose_name='优惠券领取开始时间')
+    close_date = models.DateField(verbose_name='优惠券领取结束时间')
+    valid_begin_date = models.DateField(verbose_name='有效期开始时间', null=True, blank=True)
+    valid_end_date = models.DateField(verbose_name='有效期结束时间', null=True, blank=True)
+    coupon_valid_days = models.PositiveIntegerField(verbose_name='优惠卷有效期(天)', blank=True, null=True,
+                                                    help_text='自从券被领取时开始算起')
+
+    date = models.DateTimeField(verbose_name='创建日期', auto_now_add=True)
+
+    class Meta:
+        verbose_name_plural = "500001. 优惠卷类型"
+
+    def __str__(self):
+        return "%s(%s)" % (self.get_coupon_type_display(), self.name)
+
+    def save(self, *args, **kwargs):
+        if not self.coupon_valid_days or (self.valid_begin_date and self.valid_end_date):
+            if self.valid_begin_date and self.valid_end_date:
+                if self.valid_end_date <= self.valid_begin_date:
+                    raise ValueError("valid_end_date 有效期结束日期必须晚于 valid_begin_date ")
+            if self.coupon_valid_days == 0:
+                raise ValueError("coupon_valid_days 有效期不能为0")
+        if self.close_date < self.open_date:
+            raise ValueError("close_date 优惠券领取结束时间必须晚于 open_date优惠券领取开始时间 ")
+
+        super(Coupon, self).save(*args, **kwargs)
+
+
+# 优惠卷记录
+class CouponRecord(models.Model):
+    """优惠券发放，优惠券消费记录"""
+    account = models.ForeignKey(verbose_name='所属账户', to='UserInfo', on_delete=models.CASCADE)
+    coupon = models.ForeignKey(verbose_name="优惠券类型", to='Coupon', on_delete=models.CASCADE)
+    coupon_number = models.CharField(verbose_name='优惠卷编号', max_length=64, unique=True)
+
+    status_choices = ((0, '未使用'),
+                      (1, '已使用'),
+                      (2, '已过期'))
+    status = models.SmallIntegerField(verbose_name='优惠卷状态', choices=status_choices, default=0)
+    get_time = models.DateTimeField(verbose_name='领取时间', help_text='用户领取时间')
+    used_time = models.DateTimeField(verbose_name='使用时间', null=True, blank=True)
+
+    # order = models.ForeignKey(verbose_name='使用的订单', to="Order", blank=True, null=True, verbose_name='关联订单')
+
+    class Meta:
+        verbose_name_plural = "500002. 优惠卷记录"
+
+    def __str__(self):
+        return '%s-%s-%s' % (self.account, self.coupon_number, self.status)

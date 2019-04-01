@@ -12,3 +12,6 @@ site.register(models.DegreeCourse)
 site.register(models.UserInfo)
 site.register(models.UserToken)
 site.register(models.PricePolicy)
+
+site.register(models.Coupon)
+site.register(models.CouponRecord)

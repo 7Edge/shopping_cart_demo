@@ -137,3 +137,5 @@ STATIC_URL = '/static/'
 
 # 购物车
 SHOPPING_CART_KEY = "shoppingcart_{user_id}_{course_id}"
+
+PAYMENT_CENTER_KEY = "paymentcenter_{user_id}_{course_id}"
