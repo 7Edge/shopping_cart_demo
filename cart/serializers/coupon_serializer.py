@@ -20,6 +20,7 @@ class CouponRecordModelSerializer(serializers.ModelSerializer):
     coupon_type = serializers.IntegerField(source='coupon.coupon_type')
     coupon_type_name = serializers.CharField(source='coupon.get_coupon_type_display')
 
+
     class Meta:
         model = models.CouponRecord
         fields = '__all__'

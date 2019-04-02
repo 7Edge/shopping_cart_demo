@@ -139,3 +139,5 @@ STATIC_URL = '/static/'
 SHOPPING_CART_KEY = "shoppingcart_{user_id}_{course_id}"
 
 PAYMENT_CENTER_KEY = "paymentcenter_{user_id}_{course_id}"
+
+USER_GLOBAL_COUPON_KEY = "global_coupons_{user_id}"
