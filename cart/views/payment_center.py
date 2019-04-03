@@ -22,6 +22,24 @@ from cart import models
 redis_conn = get_redis_connection()
 
 
+def format_hash_bytes2str(redis_connect, hash_key):
+    """
+    将hash表的bytes对象都转换成字符串
+    :param redis_connect:
+    :param hash_key:
+    :return:
+    """
+    to_dict = dict()
+    try:
+        for k, v in redis_connect.hgetall(hash_key).items():
+            k_str = k.decode('utf8')
+            v_str = v.decode('utf8')
+            to_dict[k_str] = v_str
+    except Exception as e:
+        raise
+    return to_dict
+
+
 class PaymentCenterViewSet(ViewSet):
     authentication_classes = [AccessTokenAuth, ]
 
@@ -72,6 +90,7 @@ class PaymentCenterViewSet(ViewSet):
             product['default_coupon'] = 0
 
             product['coupons'] = dict()
+            product['course_id'] = k_id
 
             in_payment_product_space[str(k_id)] = product
 
@@ -129,6 +148,13 @@ class PaymentCenterViewSet(ViewSet):
                          "data": "添加成功"})
 
     def list(self, request, *args, **kwargs):
+        """
+        获取所有商品
+        :param request:
+        :param args:
+        :param kwargs:
+        :return:
+        """
         user_obj = request.user
 
         data = []
@@ -145,27 +171,66 @@ class PaymentCenterViewSet(ViewSet):
                     info[k] = v
             data.append(info)
 
-        return Response({"code": 1000,
-                         "data": data})
+        # 获取通用优惠券
+        redis_global_coupon_key = settings.USER_GLOBAL_COUPON_KEY.format(user_id=user_obj.pk)
 
-    # def update(self, request, *args, **kwargs):
-    #     """
-    #     更新优惠卷,绑定商品和通用优惠卷都一起，通用优惠卷的商品course_id = 0 代表 是通用优惠卷的修改
-    #     :param request:
-    #     :param args:
-    #     :param kwargs:
-    #     :return:
-    #     """
-    #     user_obj = request.user
-    #
-    #     course_id = request.data.get('course_id')
-    #     coupon_id = str(request.data.get('coupon_id'))
-    #
-    #     # 校验商品和优惠卷的合法性
-    #     course_key = settings.PAYMENT_CENTER_KEY.format(user_id=user_obj.pk,
-    #                                                     course_id=course_id)
-    #
-    #     coupons = redis_conn.hget(course_key, 'coupons')
+        global_coupon_dict = {
+            'coupon': json.loads(redis_conn.hget(redis_global_coupon_key, 'coupons').decode('utf8')),
+            'default_coupon': redis_conn.hget(redis_global_coupon_key, 'default_coupon').decode('utf8')
+        }
+
+        return Response({"code": 1000,
+                         "data": {
+                             "course_list": data,
+                             "global_coupons": global_coupon_dict
+                         }})
+
+    def partial_update(self, request, *args, **kwargs):
+        """
+        用户提交商品id和优惠券id；对于通用优惠券只需要提供优惠券id
+        更新优惠卷,绑定商品和通用优惠卷都一起，通用优惠卷的商品course_id = 0 代表 是通用优惠卷的修改
+        :param request:
+        :param args:
+        :param kwargs:
+        :return:
+        """
+        user_obj = request.user
+
+        course_id = request.data.get('course_id')
+        coupon_id = str(request.data.get('coupon_id'))
+
+        # 通用优惠券更改
+        if not course_id:
+            global_coupon_key = settings.USER_GLOBAL_COUPON_KEY.format(user_id=user_obj.pk)
+
+            if coupon_id != '0' and coupon_id not in format_hash_bytes2str(redis_conn, global_coupon_key)['coupons']:  # 检验优惠券id合法性
+                return Response({'error': '优惠券不存在错误！',
+                                 'code': 1001})
+
+            redis_conn.hset(global_coupon_key, 'default_coupon', coupon_id)
+
+            return Response({'code': 1000,
+                             'msg': '修改成功'})
+
+        # 绑定商品的优惠券
+        course_key = settings.PAYMENT_CENTER_KEY.format(user_id=user_obj.pk,
+                                                        course_id=course_id)
+
+        # 校验商品和优惠卷的合法性
+        try:
+            if coupon_id != '0':
+                course = format_hash_bytes2str(redis_conn, course_key)
+                course_coupons = json.loads(course['coupons'])
+
+                assert coupon_id in course_coupons
+
+            redis_conn.hset(course_key, 'default_coupon', coupon_id)
+
+        except Exception as e:
+            return Response({'code': 1002,
+                             'error': '更改优惠券失败！'})
+        return Response({'code': 1000,
+                         'msg': '修改成功'})
 
 
 if __name__ == '__main__':
